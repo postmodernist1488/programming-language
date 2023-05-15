@@ -1,22 +1,25 @@
 pub mod config {
 
+    use Opt::*;
     pub enum Opt {
         Asm, // only output asm
         Ast, // print AST
+        Help, // print help
     }
-    use Opt::*;
 
     impl Opt {
         pub fn from_char(c: char) -> Option<Self> {
             match c {
                 'S' => Some(Asm),
                 's' => Some(Ast),
+                'h' => Some(Help),
                 _ => None
             }
         }
         pub fn from_str(str: &str) -> Option<Self> {
             match str {
                 "ast" => Some(Ast),
+                "help" => Some(Ast),
                 _ => None,
             }
         }
@@ -24,25 +27,27 @@ pub mod config {
 
     #[derive(Default)]
     pub struct Config {
-        pub print_asm: bool,
+        pub output_asm: bool,
         pub print_ast: bool,
-
+        pub print_help: bool,
     }
 
     impl Config {
         pub fn add_option(&mut self, o: Opt) {
             unsafe {
                 match o {
-                    Asm => GLOBAL_CONFIG.print_asm = true,
+                    Asm => GLOBAL_CONFIG.output_asm = true,
                     Ast => GLOBAL_CONFIG.print_ast = true,
+                    Help => GLOBAL_CONFIG.print_help = true,
                 }
             }
         }
     }
 
     pub static mut GLOBAL_CONFIG: Config = Config {
-        print_asm: false,
+        output_asm: false,
         print_ast: false,
+        print_help: false,
     };
 
 }

@@ -1,6 +1,6 @@
 use super::*;
 use parser::{Expr, Function, Intrinsic};
-use std::io::{BufWriter, Write};
+use std::{io::{BufWriter, Write}, process::exit};
 
 fn writeln(writer: &mut BufWriter<std::fs::File>, s: &[u8]) {
     writer.write(s).unwrap_or_else(|e| logging::io_err(e));
@@ -97,6 +97,12 @@ pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec
     }
 
     drop(writer);
+
+    unsafe {
+        if config::GLOBAL_CONFIG.output_asm {
+            exit(0);
+        }
+    }
 
     log_i!("Generating out.o with nasm...");
     let nasm_status = Command::new("nasm").args(["-g", "-felf64", &asm_filename, "-o", "out.o"]).status()

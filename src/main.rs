@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use programming_language::compile_file;
 use programming_language::logging::cmd_err;
 use programming_language::config;
@@ -21,6 +23,14 @@ impl Args {
     }
 }
 
+fn help() {
+    println!("Options:");
+    println!("    -h | --help - print this help message");
+    println!("    -o <file>   - supply output filename");
+    println!("    -S          - output asm");
+    println!("    -s | --ast  - print AST (debug)");
+}
+
 fn main() {
 
     let mut args = Args::construct();
@@ -28,33 +38,48 @@ fn main() {
     let mut output_file_path = None;
 
     while let Some(arg) = args.v.next() {
-        let mut chars = arg.chars();
-        match chars.next() {
-            Some('-') => {
-                for flag in chars {
-                    match flag {
-                        'o' => {
-                            output_file_path = args.v.next();
-                            if output_file_path.is_none() {
-                                cmd_err(&args.program_name, "no output file provided for `-o` option");
-                            }
+
+        if arg.starts_with("--") {
+            if let Some(opt) = config::Opt::from_str(&arg[2..]) {
+                unsafe {
+                    config::GLOBAL_CONFIG.add_option(opt);
+                }
+            } else {
+                cmd_err(&args.program_name, &format!("unknown flag `{}`", arg));
+            }
+        } else if arg.starts_with('-') {
+            let chars = arg[1..].chars();
+            for flag in chars {
+                match flag {
+                    'o' => {
+                        output_file_path = args.v.next();
+                        if output_file_path.is_none() {
+                            cmd_err(&args.program_name, "no output file provided for `-o` option");
                         }
-                        other => {
-                            if let Some(opt) = config::Opt::from_char(other) {
-                                unsafe {
-                                    config::GLOBAL_CONFIG.add_option(opt);
-                                }
-                            } else {
-                                cmd_err(&args.program_name, &format!("unknown flag `{}`", other));
+                    }
+                    other => {
+                        if let Some(opt) = config::Opt::from_char(other) {
+                            unsafe {
+                                config::GLOBAL_CONFIG.add_option(opt);
                             }
+                        } else {
+                            cmd_err(&args.program_name, &format!("unknown flag `{}`", other));
                         }
                     }
                 }
             }
-            Some(_) => input_file_path = Some(arg),
-            None => (),
+        } else {
+            input_file_path = Some(arg)
         }
     }
+
+    unsafe {
+        if config::GLOBAL_CONFIG.print_help {
+            help();
+            exit(0);
+        }
+    }
+
     if input_file_path.is_none() {
         cmd_err(&args.program_name, "file for compilation hasn't been provided");
     }
