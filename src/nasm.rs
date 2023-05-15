@@ -104,17 +104,28 @@ pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec
         }
     }
 
+    fn cleanup(files: &Vec<String>) {
+        for file in files {
+            std::fs::remove_file(file).unwrap_or(());
+        }
+    }
+
+    let mut produced_files = vec![asm_filename.clone()];
+
     log_i!("Generating out.o with nasm...");
     let nasm_status = Command::new("nasm").args(["-g", "-felf64", &asm_filename, "-o", "out.o"]).status()
         .unwrap_or_else(|e| logging::asm_err(&format!("failed to run nasm: {}", e)));
     if nasm_status.success() {
+        produced_files.push("out.o".to_string());
         log_i!("Linking out.o with ld...");
         let ld_status = Command::new("ld").args(["-o", output_filepath, "out.o"]).status()
         .unwrap_or_else(|e| logging::linking_err(&format!("failed to run ld: {}", e)));
+        cleanup(&produced_files);
         if !ld_status.success() {
             logging::linking_err("ld failed")
         }
     } else {
+        cleanup(&produced_files);
         logging::asm_err("nasm failed");
     }
 }
