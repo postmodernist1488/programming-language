@@ -1,0 +1,8 @@
+fn foo() {
+    print("Hello from function!\n");
+}
+
+fn main() {
+    print("Calling function:\n");
+    foo();
+}
