@@ -1,6 +1,6 @@
 use super::*;
-use parser::{Expr, Function, Intrinsic};
-use std::{io::{BufWriter, Write}, process::exit};
+use parser::{Expr, Function, Intrinsic, Data};
+use std::{io::{BufWriter, Write}, process::exit, fs::read_to_string};
 
 fn writeln(writer: &mut BufWriter<std::fs::File>, s: &[u8]) {
     writer.write(s).unwrap_or_else(|e| logging::io_err(e));
@@ -24,6 +24,10 @@ fn expr_to_nasm(writer: &mut BufWriter<std::fs::File>, funs: &Vec<Function>, exp
             writeln(writer, format!("    push {}", len).as_bytes());
             writeln(writer, format!("    push str_{}", n).as_bytes());
         }
+        Expr::Var(name) => {
+            writeln(writer, format!("    mov eax, [global_var_{}]", name).as_bytes());
+            writeln(writer, b"    push rax");
+        }
         Expr::Intrinsic(Intrinsic::Print) => {
             // print a string on the stack
             writeln(writer, b"    mov rax, 1");
@@ -33,7 +37,10 @@ fn expr_to_nasm(writer: &mut BufWriter<std::fs::File>, funs: &Vec<Function>, exp
             writeln(writer, b"    pop rdx");
             writeln(writer, b"    syscall");
             writeln(writer, b"    push r8");
-
+        }
+        Expr::Intrinsic(Intrinsic::PrintNum) => {
+            let text = read_to_string("print_num.asm").unwrap_or_else(|e| logging::io_err(e));
+            writeln(writer, text.as_bytes());
         }
     }
 }
@@ -64,7 +71,8 @@ fn fundef_to_nasm(writer: &mut BufWriter<std::fs::File>, fun: &Function, funs: &
     writeln(writer, b"    ret");
 }
 
-pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec<String>) {
+
+pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Data) {
     use std::process::Command;
     let asm_filename: String = format!("{}.asm", output_filepath);
     let f = std::fs::File::create(&asm_filename).unwrap_or_else(|e| logging::io_err(e));
@@ -74,7 +82,6 @@ pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec
     writeln(&mut writer, b"section .text");
     writeln(&mut writer, b"_start:");
     writeln(&mut writer, b"    call main");
-
     writeln(&mut writer, b"exit:");
     writeln(&mut writer, b"    mov rdi, 0");
     writeln(&mut writer, b"    mov rax, 60");
@@ -85,7 +92,7 @@ pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec
     }
 
     let mut bytes_repr = String::new();
-    for (n, s) in data.iter().enumerate() {
+    for (n, s) in data.strings.iter().enumerate() {
 
         for byte in s.as_bytes() {
             bytes_repr.push_str(&byte.to_string());
@@ -95,6 +102,12 @@ pub fn to_linux_nasm_x64(output_filepath: &str, funs: &Vec<Function>, data: &Vec
         writeln(&mut writer, format!("str_{n} db {bytes_repr}").as_bytes());
         bytes_repr.clear();
     }
+
+    for var in data.globals.iter() {
+        writeln(&mut writer, format!("global_var_{} dd 0", var).as_bytes());
+    }
+    writeln(&mut writer, b"section .bss");
+    writeln(&mut writer, b"__stringspace resb 10");
 
     drop(writer);
 

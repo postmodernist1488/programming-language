@@ -69,7 +69,7 @@ pub mod logging {
     }
 
     use std::process::exit;
-    use crate::lexer::TokenKind;
+    use crate::lexer::{Token, TokenKind, Loc};
 
     pub fn cmd_err(program_name: &str, message: &str) -> ! {
         eprintln!("{program_name}: {message}");
@@ -83,24 +83,26 @@ pub mod logging {
         eprintln!("Assembly error: {}", text);
         exit(1);
     }
-    pub fn name_err(name: &str) -> ! {
-        eprintln!("NameErr: `{}` not defined", name);
-        exit(1);
-    }
     pub fn linking_err(text: &str) -> ! {
         eprintln!("Linking error: {}", text);
         exit(1);
     }
-    pub fn syntax_err(text: &str) -> ! {
-        eprintln!("Syntax error: {}", text);
+
+    //prl compiler errors
+    pub fn name_err(name: &str) -> ! {
+        eprintln!("NameErr: `{}` not defined", name);
         exit(1);
     }
-    pub fn unexpected_token(expected: TokenKind, found: TokenKind) -> ! {
-        eprintln!("Unexpected token {:?}, expected {:?}", found, expected);
+    pub fn syntax_err(file: &str, loc: Loc, text: &str) -> ! {
+        eprintln!("{}:{}:Syntax error: {}", file, loc, text);
         exit(1);
     }
-    pub fn no_expected_token(expected: TokenKind) -> ! {
-        eprintln!("Expected token {:?}, but found nothing", expected);
+    pub fn unexpected_token(file: &str, expected: TokenKind, found: Token) -> ! {
+        eprintln!("{}:{}:Unexpected token {:?}, expected {:?}", file, found.loc, found.kind, expected);
+        exit(1);
+    }
+    pub fn no_expected_token(file: &str, expected: TokenKind) -> ! {
+        eprintln!("{}:Expected token {:?}, but found EOF", file, expected);
         exit(1);
     }
 }
@@ -110,12 +112,12 @@ mod parser;
 mod nasm;
 
 pub fn compile_file(input_path: &str, output_path: &str) {
-    let contents = std::fs::read_to_string(input_path).unwrap_or_else(|e| logging::io_err(e));
-    let mut lexer = lexer::Lexer::new(contents.chars().collect());
+    let mut lexer = lexer::Lexer::new(input_path);
     let (funs, data) = parser::parse(&mut lexer);
     unsafe {
         if config::GLOBAL_CONFIG.print_ast {
             log_d!("AST: {:?}", funs);
+            log_d!("data: {:?}", data);
         }
     }
     nasm::to_linux_nasm_x64(output_path, &funs, &data);

@@ -1,0 +1,5 @@
+let i
+fn main() {
+    print_num(i)
+    print("\n")
+}
