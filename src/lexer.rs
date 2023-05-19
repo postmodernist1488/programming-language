@@ -22,7 +22,6 @@ pub enum TokenKind {
     Litrl(Literal),
     Semicolon,
     Comma,
-    Invalid,
 }
 
 #[derive(Debug)]
