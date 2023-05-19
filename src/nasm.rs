@@ -39,7 +39,7 @@ fn expr_to_nasm(writer: &mut BufWriter<std::fs::File>, funs: &Vec<Function>, exp
             writeln(writer, b"    push r8");
         }
         Expr::Intrinsic(Intrinsic::PrintNum) => {
-            let text = read_to_string("print_num.asm").unwrap_or_else(|e| logging::io_err(e));
+            let text = read_to_string("src/print_num.asm").unwrap_or_else(|e| logging::io_err(e));
             writeln(writer, text.as_bytes());
         }
     }
